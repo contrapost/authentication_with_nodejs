@@ -30,7 +30,10 @@ app.use(sessions({
     cookieName: 'session',                                  // cookie name added to the request object
     secret: 'dsfljljk23h8u8239uewjfwøf3j90ewbiujdvav',
     duration: 30 * 60 * 1000,
-    activeDuration: 5 * 60 * 1000
+    activeDuration: 5 * 60 * 1000,
+    httpOnly: true                                          // doesn't allow javascript in browser to access cookies
+    // secure: true                                         // allows to use cookies only over https
+    // ephemeral: true                                      // deletes cookies when browser is closed
 }));
 app.use(csrf());
 

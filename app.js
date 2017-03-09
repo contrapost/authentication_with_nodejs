@@ -15,7 +15,7 @@ var User = mongoose.model('User', new Schema({
     id: ObjectId,
     firstName: String,
     lastName: String,
-    email: { type: String, unique: true},
+    email: {type: String, unique: true},
     password: String
 }));
 
@@ -23,7 +23,7 @@ var User = mongoose.model('User', new Schema({
 mongoose.connect('mongodb://localhost/newauth');
 
 // Middleware
-app.use(bodyParser.urlencoded({ extended: true}));
+app.use(bodyParser.urlencoded({extended: true}));
 app.use(sessions({
     cookieName: 'session',                                  // cookie name added to the request object
     secret: 'dsfljljk23h8u8239uewjfwøf3j90ewbiujdvav',
@@ -31,15 +31,40 @@ app.use(sessions({
     activeDuration: 5 * 60 * 1000
 }));
 
-app.get('/', function(req, res) {
+// Custom middleware
+app.use(function (req, res, next) {
+    if (req.session && req.session.user) {
+        User.findOne({email: req.session.user.email}, function (err, user) {
+            if (user) {
+                req.user = user;
+                delete req.user.password;
+                req.session.user = req.user;
+                res.locals.user = req.user;
+            }
+            next();
+        })
+    } else {
+        next();
+    }
+});
+
+function requireLogin(req, res, next) {
+    if (!req.user) {
+        res.redirect('/login');
+    } else {
+        next();
+    }
+}
+
+app.get('/', function (req, res) {
     res.render('index.jade');
 });
 
-app.get('/register', function(req, res) {
+app.get('/register', function (req, res) {
     res.render('register.jade')
 });
 
-app.post('/register', function(req, res) {
+app.post('/register', function (req, res) {
     var hash = bcrypt.hashSync(req.body.password, bcrypt.genSaltSync(10));
     var user = new User({
         firstName: req.body.firstName,
@@ -47,10 +72,10 @@ app.post('/register', function(req, res) {
         email: req.body.email,
         password: hash
     });
-    user.save(function(err) {
-        if(err) {
+    user.save(function (err) {
+        if (err) {
             var error = 'Aya, Carramba! Try again!';
-            if(err.status === 11000) {
+            if (err.status === 11000) {
                 error = 'That email is already taken, try another.';
             }
 
@@ -61,43 +86,30 @@ app.post('/register', function(req, res) {
     });
 });
 
-app.get('/login', function(req, res) {
+app.get('/login', function (req, res) {
     res.render('login.jade')
 });
 
 app.post('/login', function (req, res) {
-   User.findOne({ email: req.body.email }, function (err, user) {
-
-       if(!user) {
-           res.render('login.jade', { error: 'Invalid email or password'});
-       } else {
-           if(bcrypt.compareSync(req.body.password, user.password)) {
-               req.session.user = user;
-               res.redirect('/dashboard');
-           } else {
-               res.render('login.jade', { error: 'Invalid email or password'});
-           }
-       }
-   });
-});
-
-app.get('/dashboard', function(req, res) {
-    if(req.session && req.session.user){
-        User.findOne({ email: req.session.user.email }, function (err, user) {
-            if(!user) {
-                req.session.reset();
-                res.redirect('/login');
+    User.findOne({email: req.body.email}, function (err, user) {
+        if (!user) {
+            res.render('login.jade', {error: 'Invalid email or password'});
+        } else {
+            if (bcrypt.compareSync(req.body.password, user.password)) {
+                req.session.user = user;
+                res.redirect('/dashboard');
             } else {
-                res.locals.user = user; // access to user inside templates
-                res.render('dashboard.jade');
+                res.render('login.jade', {error: 'Invalid email or password'});
             }
-        })
-    } else {
-        res.redirect('/login')
-    }
+        }
+    });
 });
 
-app.get('/logout', function(req, res) {
+app.get('/dashboard', requireLogin, function (req, res) {
+    res.render('dashboard.jade')
+});
+
+app.get('/logout', function (req, res) {
     req.session.reset();
     res.redirect('/')
 });

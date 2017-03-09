@@ -1,6 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var bcrypt = require('bcryptjs');
+var csrf = require('csurf');
 var sessions = require('client-sessions');
 var mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
@@ -24,12 +25,14 @@ mongoose.connect('mongodb://localhost/newauth');
 
 // Middleware
 app.use(bodyParser.urlencoded({extended: true}));
+
 app.use(sessions({
     cookieName: 'session',                                  // cookie name added to the request object
     secret: 'dsfljljk23h8u8239uewjfwøf3j90ewbiujdvav',
     duration: 30 * 60 * 1000,
     activeDuration: 5 * 60 * 1000
 }));
+app.use(csrf());
 
 // Custom middleware
 app.use(function (req, res, next) {
@@ -61,7 +64,7 @@ app.get('/', function (req, res) {
 });
 
 app.get('/register', function (req, res) {
-    res.render('register.jade')
+    res.render('register.jade', { csrfToken: req.csrfToken() })
 });
 
 app.post('/register', function (req, res) {
@@ -87,7 +90,7 @@ app.post('/register', function (req, res) {
 });
 
 app.get('/login', function (req, res) {
-    res.render('login.jade')
+    res.render('login.jade', { csrfToken: req.csrfToken() })
 });
 
 app.post('/login', function (req, res) {
